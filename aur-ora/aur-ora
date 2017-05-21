@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+
+#
+# Aur-Ora
+#
+
+import os
+import sys
+import subprocess
+
+if os.getuid() is not 0:
+    print('\n>>> aur-ora must be run as root! Exiting...\n')
+    sys.exit()
+
+def installSingle(software):
+    print('Installing', software, '...')
+    try:
+        installResult = subprocess.check_output(['aura', '--noconfirm', '-S', software], stderr=subprocess.STDOUT)
+        print('Installed', software, 'successfully!')
+    except subprocess.CalledProcessError as e:
+        if b'Please check your input' in e.output:
+            try:
+                installResult = subprocess.check_output(['aura', '--noconfirm', '-A', software], stderr=subprocess.STDOUT)
+                print('Installed', software, 'successfully!')
+            except subprocess.CalledProcessError as e:
+                print('Installing', software, 'failed! Couldn\'t find the package!')
+
+def upgrade():
+    print('Update & Upgrade process started...')
+    try:
+        upgradeResultPacman = subprocess.check_output(['aura', '--noconfirm', '-Syu'], stderr=subprocess.STDOUT)
+        upgradeResultAur = subprocess.check_output(['aura', '--noconfirm', '-Au'], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        if len(sys.argv) is 3 and '-v' in sys.argv[2]:
+            print(e.output)
+        else:
+            print('Something went wrong! Append \'--verbose\' to your command to see what happened.')
+        sys.exit()
+
+    print('Your system has been successfully upgraded!')
+
+
+def installFromFile(filePath):
+    try:
+        fileProcess = open(filePath, 'r')
+        print('>>> Started installation process...')
+
+        for line in fileProcess:
+            installSingle(line.rstrip())
+
+        print('>>> Finished installing all targets!')
+    except IOError:
+        print('>>> Error! Couldn\'t read from the file!')
+
+def main():
+
+    if len(sys.argv) < 2:
+        print('Not enough arguments provided! Exiting...')
+        sys.exit()
+
+    if '-I' in sys.argv[1]:
+        if len(sys.argv) is 2:
+            print('Not enough arguments provided! Exiting...')
+            sys.exit()
+        installSingle(sys.argv[2])
+    elif '-Ff' in sys.argv[1]:
+        if len(sys.argv) is 2:
+            print('Not enough arguments provided! Exiting...')
+            sys.exit()
+        installFromFile(sys.argv[2])
+    elif '-U' in sys.argv[1]:
+        upgrade()
+    else:
+        print('Invalid arguments provided! Run with \'--help\' or \'-h\'. Exiting...')
+        sys.exit()
+
+main()
